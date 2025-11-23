@@ -19,22 +19,24 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* 引入 Noto Sans SC 作为后备 */
+        /* 引入 Noto Sans SC 作为最后的后备 */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
 
         /* --- 核心字体设置 --- */
+        /* 英文优先 Times New Roman，中文优先 KaiTi 系列 */
         body {
-            font-size: 13px;
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'SimKai', 'BiauKai', 'Noto Sans SC', serif;
             background-color: #525659;
             color: #000;
             margin: 0;
             padding: 0;
+            font-size: 11pt; /* 基础字体加大 */
         }
 
+        /* 强制楷体类 - 加大字号 */
         .font-kaiti {
-            font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
-            font-size: 15px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'SimKai', 'BiauKai', serif !important;
+            font-size: 12pt; /* 约 16px */
         }
 
         /* --- 打印样式 (绝对控制) --- */
@@ -50,54 +52,52 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: white;
-                overflow: hidden; /* 禁止溢出 */
+                /* 关键：移除 overflow: hidden 以免截断底部，但通过高度控制防止溢出 */
             }
 
-            /* 隐藏所有不需要打印的元素 */
-            .no-print, nav {
+            .no-print {
                 display: none !important;
             }
 
-            /* 关键修复：打印时容器必须是 block */
             .print-container {
                 display: block !important; 
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                background: white;
             }
 
             /* 强制每一个报表都是一页 */
             .page-break {
-                page-break-after: always; /* 强制分页 */
+                page-break-after: always;
                 break-after: page; 
                 page-break-inside: avoid;
+                /* 稍微缩减高度，留出底部缓冲，防止空白页 */
+                height: 290mm; 
                 width: 210mm;
-                height: 296mm; /* 稍微小于 A4 高度，防止溢出产生空白页 */
                 position: relative;
-                overflow: hidden;
-                display: flex !important; /* 保持 Flex 布局 */
+                display: flex !important;
                 flex-direction: column;
                 padding: 0 !important;
                 margin: 0 !important;
             }
             
-            /* 最后一个元素不需要分页符，防止最后多出一页空白 */
-            .page-break:last-child {
-                page-break-after: auto;
-                break-after: auto;
+            /* 最后一个元素不需要分页符 */
+            .page-break:last-of-type {
+                page-break-after: avoid;
+                break-after: avoid;
+                margin-bottom: 0;
             }
 
-            /* 打印时移除所有预览框的装饰 */
+            /* 打印时移除预览框装饰 */
             .a4-preview {
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
                 width: 100% !important;
                 height: 100% !important;
-                padding: 10mm 12mm !important; /* 打印时的物理边距 */
+                /* 打印时的物理边距：上下左右 10mm */
+                padding: 10mm !important; 
                 box-sizing: border-box;
-                background: white !important;
             }
         }
 
@@ -113,16 +113,16 @@
         /* A4 容器 - Flexbox 垂直布局 */
         .a4-preview {
             width: 210mm;
-            height: 296mm; /* 严格 A4 高度 (减去1mm缓冲) */
-            padding: 10mm 12mm; /* 上下10mm，左右12mm */
+            height: 296mm; /* 屏幕模拟高度 */
+            padding: 10mm; /* 屏幕模拟边距 */
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
             position: relative;
             box-sizing: border-box;
             display: flex;
             flex-direction: column; 
-            justify-content: space-between; /* 核心布局：两端对齐 */
-            margin-bottom: 20px; /* 屏幕预览时的间距 */
+            justify-content: space-between; /* 头顶天，脚立地 */
+            margin-bottom: 20px;
         }
         
         /* 顶部区域 - 固定 */
@@ -151,28 +151,30 @@
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            /* 确保表格字体也是 Times + 楷体 */
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'SimKai', serif;
+            font-size: 11pt; /* 表格字体加大 */
             margin-bottom: 8px; 
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 3px 5px; 
+            padding: 2px 4px; /* 紧凑内边距 */
             vertical-align: middle;
-            line-height: 1.2; 
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+            line-height: 1.1; 
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
+            padding-top: 4px;
+            padding-bottom: 4px;
         }
         
-        /* 科目列 */
+        /* 科目列 - 不换行 */
         .subject-cell {
-            display: flex;
-            align-items: center;
-            flex-wrap: nowrap;
-            overflow: hidden;
+            display: block; 
+            white-space: nowrap; 
+            overflow: visible;
         }
         
         /* 签名栏线 */
@@ -197,7 +199,7 @@
             margin-right: 8px;
             min-width: fit-content;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 13px;
+            font-size: 11pt;
             text-transform: uppercase; 
         }
         .info-value {
@@ -207,7 +209,7 @@
             padding-bottom: 1px;
             font-weight: bold;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 14px;
+            font-size: 12pt; /* 填写的资料字体大一点 */
         }
         
         /* 评语框 - 自适应高度 */
@@ -215,15 +217,15 @@
             flex-grow: 1; /* 填充剩余空间 */
             display: flex;
             flex-direction: column;
-            min-height: 60px; /* 最小高度 */
+            min-height: 60px; 
         }
         .comment-box {
             border: 1px solid black;
-            padding: 8px;
+            padding: 5px;
             width: 100%;
             flex-grow: 1; /* 填满容器 */
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 14px;
+            font-size: 11pt; /* 评语字体 */
         }
     </style>
 </head>
@@ -347,6 +349,7 @@
                 if (students.length === 0) return [];
 
                 let allData = students.map(s => ({...s}));
+                
                 const groups = {}; 
 
                 allData.forEach(student => {
