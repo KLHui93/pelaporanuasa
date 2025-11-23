@@ -29,6 +29,7 @@
             background-color: #525659;
             color: #000;
             margin: 0;
+            padding: 0;
         }
 
         .font-kaiti {
@@ -40,7 +41,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0;
+                margin: 0; /* 零边距 */
             }
             
             html, body {
@@ -49,33 +50,45 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: white;
+                overflow: hidden; /* 禁止溢出 */
             }
 
-            .no-print {
+            /* 隐藏所有不需要打印的元素 */
+            .no-print, nav {
                 display: none !important;
             }
 
-            /* 关键修复：打印时容器必须是 block，否则 page-break 不生效 */
+            /* 关键修复：打印时容器必须是 block */
             .print-container {
                 display: block !important; 
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                background: white;
             }
 
             /* 强制每一个报表都是一页 */
             .page-break {
-                page-break-after: always;
-                break-after: page; /* 现代浏览器支持 */
+                page-break-after: always; /* 强制分页 */
+                break-after: page; 
                 page-break-inside: avoid;
                 width: 210mm;
-                height: 296mm; /* 留1mm缓冲 */
+                height: 296mm; /* 稍微小于 A4 高度，防止溢出产生空白页 */
                 position: relative;
                 overflow: hidden;
-                display: block; /* 确保它作为一个块级元素存在 */
+                display: flex !important; /* 保持 Flex 布局 */
+                flex-direction: column;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            /* 最后一个元素不需要分页符，防止最后多出一页空白 */
+            .page-break:last-child {
+                page-break-after: auto;
+                break-after: auto;
             }
 
-            /* 打印时移除所有边距和阴影，内容铺满 */
+            /* 打印时移除所有预览框的装饰 */
             .a4-preview {
                 margin: 0 !important;
                 box-shadow: none !important;
@@ -84,9 +97,7 @@
                 height: 100% !important;
                 padding: 10mm 12mm !important; /* 打印时的物理边距 */
                 box-sizing: border-box;
-                display: flex !important; /* 保持内部 Flex 布局以对齐 Header/Footer */
-                flex-direction: column;
-                justify-content: space-between;
+                background: white !important;
             }
         }
 
@@ -102,7 +113,7 @@
         /* A4 容器 - Flexbox 垂直布局 */
         .a4-preview {
             width: 210mm;
-            height: 297mm; /* 严格 A4 高度 */
+            height: 296mm; /* 严格 A4 高度 (减去1mm缓冲) */
             padding: 10mm 12mm; /* 上下10mm，左右12mm */
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
@@ -110,11 +121,11 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column; 
-            justify-content: space-between; /* 头顶天，脚立地 */
-            margin-bottom: 20px; /* 屏幕预览时间距 */
+            justify-content: space-between; /* 核心布局：两端对齐 */
+            margin-bottom: 20px; /* 屏幕预览时的间距 */
         }
         
-        /* 顶部区域 */
+        /* 顶部区域 - 固定 */
         .header-section {
             flex: 0 0 auto;
         }
@@ -129,7 +140,7 @@
             padding-top: 5px;
         }
 
-        /* 底部签名区域 */
+        /* 底部签名区域 - 固定 */
         .footer-section {
             flex: 0 0 auto;
             margin-top: auto;
@@ -199,20 +210,20 @@
             font-size: 14px;
         }
         
-        /* 评语框 */
-        .comment-box {
-            border: 1px solid black;
-            padding: 8px;
-            width: 100%;
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            min-height: 60px;
-            font-size: 14px;
-        }
-        
+        /* 评语框 - 自适应高度 */
         .comment-box-container {
             flex-grow: 1; /* 填充剩余空间 */
             display: flex;
             flex-direction: column;
+            min-height: 60px; /* 最小高度 */
+        }
+        .comment-box {
+            border: 1px solid black;
+            padding: 8px;
+            width: 100%;
+            flex-grow: 1; /* 填满容器 */
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+            font-size: 14px;
         }
     </style>
 </head>
