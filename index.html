@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SJKC 成绩单生成器</title>
+    <title>Smart Report 智能报表</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -25,8 +25,9 @@
         /* --- 核心字体设置 --- */
         body {
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
-            background-color: #f3f4f6;
+            background-color: #525659;
             color: #000;
+            margin: 0;
         }
 
         /* 强制楷体类 */
@@ -34,20 +35,17 @@
             font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
         }
 
-        /* 打印样式优化 - 核心部分 */
+        /* --- A4 纸张模拟与打印样式 --- */
         @media print {
             @page {
-                size: A4; /* 明确指定 A4 */
-                margin: 0; /* 浏览器打印边距设为0，完全由 CSS 控制 */
+                size: A4;
+                margin: 0; 
             }
             body {
                 background-color: white;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-                width: 210mm;
-                height: 297mm;
             }
-            /* 隐藏所有不需要打印的元素 */
             .no-print {
                 display: none !important;
             }
@@ -56,79 +54,92 @@
                 margin: 0;
                 padding: 0;
             }
-            /* 强制分页：每个学生一页 */
             .page-break {
                 page-break-after: always;
-                page-break-inside: avoid;
-                min-height: 296mm; /* 稍微小于 297mm 以防溢出产生空白页 */
+                width: 210mm;
+                height: 296mm; 
+                overflow: hidden; 
                 position: relative;
-                overflow: hidden; /* 防止内容溢出导致多页 */
             }
-            table, th, td {
-                border-color: #000 !important;
+            .a4-preview {
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-inside: avoid;
             }
         }
 
-        /* A4 预览样式 (屏幕上模拟) */
+        /* 屏幕预览样式 */
+        .print-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
         .a4-preview {
             width: 210mm;
-            min-height: 296mm; /* 对应打印高度 */
-            padding: 12mm 15mm; /* 调整内边距：上下12mm，左右15mm，留出更多空间 */
-            margin: 20px auto;
+            height: 296mm; /* 严格固定高度 */
+            padding: 12mm 15mm; /* 上下 12mm, 左右 15mm */
             background: white;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); 
             position: relative;
-            /* 再次确保预览区域字体正确 */
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            box-sizing: border-box; /* 确保 padding 包含在宽高内 */
+            box-sizing: border-box;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column; 
+            justify-content: space-between; 
         }
         
-        /* 表格样式 - 紧凑型 */
+        /* --- 表格样式优化 (紧凑型) --- */
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10.5pt; /* 稍微调小字体以适应更多内容 */
-            margin-bottom: 1rem;
+            font-size: 10.5pt; 
+            margin-bottom: 8px; 
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 3px 6px; /* 减小单元格内边距 */
+            padding: 3px 5px; 
             vertical-align: middle;
-            line-height: 1.2;
+            line-height: 1.15;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
-            padding-top: 5px;
-            padding-bottom: 5px;
+            padding-top: 4px;
+            padding-bottom: 4px;
         }
         
-        /* 科目列样式 - 强制不换行 */
+        /* 科目列 - 强制不换行，并排显示 */
         .subject-cell {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            display: block; /* 改为 block 让 span 自然流动，但配合 whitespace-nowrap 强制一行 */
             white-space: nowrap; 
-            overflow: visible;
+            overflow: visible; /* 允许稍微溢出一点点以免被切掉，或者 hidden */
         }
         
-        /* 签名字段横线 */
+        /* 签名栏 */
+        .footer-section {
+            margin-top: auto; 
+            padding-top: 10px;
+        }
         .signature-line {
             border-bottom: 1px solid black;
             display: block;
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             height: 1px;
         }
         
-        /* 头部信息行样式 */
+        /* 头部信息行 */
         .info-row {
             display: flex;
             align-items: flex-end;
             width: 100%;
-            margin-bottom: 4px; /* 减小行间距 */
+            margin-bottom: 4px;
         }
         .info-label {
             font-weight: bold;
@@ -147,12 +158,6 @@
             font-weight: bold;
             min-height: 1.4em;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-        }
-        
-        /* 底部签名栏定位 */
-        .footer-section {
-            margin-top: 2rem;
-            /* 也可以考虑 absolute bottom 但 flow layout 通常更安全 */
         }
     </style>
 </head>
@@ -445,18 +450,14 @@
                 XLSX.writeFile(wb, "SJKC_Report_Template.xlsx");
             };
 
-            // --- 打印处理 ---
             const handlePrint = () => {
-                // 设置打印标题，以便保存为 PDF 时自动使用该文件名
                 const originalTitle = document.title;
-                // 生成文件名：SJKC_Report_班级_年份.pdf
                 const className = filterClass !== 'All' ? filterClass.replace(/\s+/g, '_') : 'All_Classes';
                 const yearName = filterYear !== 'All' ? filterYear.replace(/\//g, '-') : 'All_Years';
                 document.title = `SJKC_Report_${className}_${yearName}`;
                 
                 window.print();
                 
-                // 打印后恢复标题
                 setTimeout(() => {
                     document.title = originalTitle;
                 }, 1000);
@@ -468,7 +469,7 @@
                         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center space-x-2">
                                 <FileSpreadsheet className="w-6 h-6" />
-                                <h1 className="text-xl font-bold">SJKC 成绩单生成器</h1>
+                                <h1 className="text-xl font-bold">SJKC Smart Report (智能报表)</h1>
                             </div>
                             
                             {students.length > 0 && viewMode === 'preview' && (
@@ -617,7 +618,7 @@
                         <div className="border-b border-black w-full mx-auto mt-1 mb-2"></div>
 
                         {/* 学生信息 */}
-                        <div className="mb-4 pt-4">
+                        <div className="mb-4 font-serif pt-4">
                             <div className="info-row">
                                 <span className="info-label w-24">NAMA / 姓名:</span>
                                 <span className="info-value uppercase font-bold">{data.Name}</span>
@@ -640,17 +641,18 @@
 
                         <div className="text-center mb-4 mt-6">
                             <h3 className="text-2xl font-bold font-kaiti mb-1">各科学业成绩记录表</h3>
-                            <h3 className="text-sm font-bold uppercase underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
+                            <h3 className="text-sm font-bold uppercase font-serif underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
                         </div>
 
                         {/* 成绩表格 */}
                         <table className="report-table mb-4">
                             <thead>
                                 <tr>
-                                    <th className="w-[35%] text-left pl-4">MATA PELAJARAN / 科目</th>
-                                    <th className="w-[12%]">MARKAH</th>
-                                    <th className="w-[12%]">GRED</th>
-                                    <th className="w-[41%]">CATATAN</th>
+                                    {/* 32% + 10% + 10% + 48% */}
+                                    <th className="w-[32%] text-left pl-4">MATA PELAJARAN / 科目</th>
+                                    <th className="w-[10%]">MARKAH</th>
+                                    <th className="w-[10%]">GRED</th>
+                                    <th className="w-[48%]">CATATAN</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -665,8 +667,8 @@
                                         <tr key={idx}>
                                             <td className="pl-4">
                                                 <div className="subject-cell">
-                                                    <div className="font-bold uppercase text-sm">{sub.nameBM}</div>
-                                                    <div className="text-md font-kaiti">{sub.nameCN}</div>
+                                                    <span className="font-bold uppercase text-xs">{sub.nameBM}</span>
+                                                    <span className="text-sm font-kaiti ml-2">{sub.nameCN}</span>
                                                 </div>
                                             </td>
                                             <td className="text-center font-bold text-lg">{mark}</td>
@@ -746,7 +748,7 @@
                         </div>
 
                         {/* 签名栏 */}
-                        <div className="flex justify-between items-start mt-16 break-inside-avoid text-center text-sm footer-section">
+                        <div className="footer-section flex justify-between items-start text-center text-sm">
                             <div className="w-1/3 px-4 flex flex-col items-center">
                                 <div className="signature-line"></div>
                                 <p className="font-bold">GURU KELAS</p>
@@ -764,10 +766,6 @@
                                 <p className="font-bold">IBU BAPA / PENJAGA</p>
                                 <p className="font-kaiti">家长 / 监护人</p>
                             </div>
-                        </div>
-
-                        <div className="absolute bottom-4 right-4 text-xs text-gray-400 no-print">
-                            Page {pageIndex + 1} of {totalPages}
                         </div>
                     </div>
                 </div>
