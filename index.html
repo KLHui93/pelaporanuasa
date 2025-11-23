@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-MY">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SJKC 成绩单生成器</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        /* 引入 Noto Sans SC 作为后备 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        /* --- 核心字体设置 --- */
+        body {
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
+            background-color: #f3f4f6;
+            color: #000;
+        }
+
+        /* 强制楷体类 */
+        .font-kaiti {
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
+        }
+
+        /* 打印样式优化 */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0; 
+            }
+            body {
+                background-color: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-container {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .page-break {
+                page-break-after: always;
+                height: 100vh; 
+                position: relative;
+            }
+            table, th, td {
+                border-color: #000 !important;
+            }
+        }
+
+        /* A4 预览样式 */
+        .a4-preview {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm; 
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+        }
+        
+        /* 表格样式 */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11pt;
+            margin-bottom: 1.5rem;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid black;
+            padding: 4px 8px;
+            vertical-align: middle;
+            line-height: 1.3;
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+        }
+        .report-table th {
+            text-align: center;
+            background-color: #f3f4f6;
+            font-weight: bold;
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+        
+        /* 科目列样式 */
+        .subject-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            white-space: nowrap; 
+            overflow: visible;
+        }
+        
+        /* 签名字段横线 */
+        .signature-line {
+            border-bottom: 1px solid black;
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            height: 1px;
+        }
+        
+        /* 头部信息行样式 */
+        .info-row {
+            display: flex;
+            align-items: flex-end;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+        .info-label {
+            font-weight: bold;
+            white-space: nowrap;
+            margin-right: 8px;
+            min-width: fit-content;
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif; /* 统一字体 */
+            font-size: 0.9em;
+            text-transform: uppercase; 
+        }
+        .info-value {
+            flex-grow: 1;
+            border-bottom: 1px dotted #000;
+            padding-left: 8px;
+            padding-bottom: 2px;
+            font-weight: bold;
+            min-height: 1.5em;
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- 图标组件 ---
+        const IconWrapper = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+        const FileSpreadsheet = ({ className }) => (<IconWrapper className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M8 13h2" /><path d="M8 17h2" /><path d="M14 13h2" /><path d="M14 17h2" /></IconWrapper>);
+        const Settings = ({ className }) => (<IconWrapper className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></IconWrapper>);
+        const Upload = ({ className }) => (<IconWrapper className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></IconWrapper>);
+        const FileDown = ({ className }) => (<IconWrapper className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M12 18v-6" /><path d="m9 15 3 3 3-3" /></IconWrapper>);
+        const Printer = ({ className }) => (<IconWrapper className={className}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect width="12" height="8" x="6" y="14" /></IconWrapper>);
+        const Filter = ({ className }) => (<IconWrapper className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></IconWrapper>);
+        const LinkIcon = ({ className }) => (<IconWrapper className={className}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></IconWrapper>);
+
+
+        // --- 工具函数 ---
+        const parseExcelDate = (excelDate) => {
+            if (!excelDate) return "";
+            if (typeof excelDate === 'number') {
+                const date = new Date((excelDate - (25567 + 2)) * 86400 * 1000);
+                return date.toLocaleDateString('en-GB');
+            }
+            return excelDate;
+        };
+
+        const getProp = (row, keys) => {
+            for (let k of keys) { if (row[k] !== undefined) return row[k]; }
+            const rowKeys = Object.keys(row);
+            for (let k of keys) {
+                const normalizedK = k.toLowerCase().replace(/\s/g, '');
+                const foundKey = rowKeys.find(rk => rk.toLowerCase().replace(/\s/g, '').includes(normalizedK));
+                if (foundKey) return row[foundKey];
+            }
+            return undefined;
+        };
+
+        const SUBJECTS_MAP = [
+            { key: 'BM', excelHeader: 'BM', gradeHeader: 'GBM', nameBM: 'Bahasa Melayu', nameCN: '国文' },
+            { key: 'BC', excelHeader: 'BC', gradeHeader: 'GBC', nameBM: 'Bahasa Cina', nameCN: '华文' },
+            { key: 'BI', excelHeader: 'BI', gradeHeader: 'GBI', nameBM: 'Bahasa Inggeris', nameCN: '英文' },
+            { key: 'MT', excelHeader: 'MT', gradeHeader: 'GMT', nameBM: 'Matematik', nameCN: '数学' },
+            { key: 'SA', excelHeader: 'SA', gradeHeader: 'GSA', nameBM: 'Sains', nameCN: '科学' },
+            { key: 'SEJ', excelHeader: 'SEJ', gradeHeader: 'GSEJ', nameBM: 'Sejarah', nameCN: '历史' },
+            { key: 'PM_PI', excelHeader: 'PM/PI', gradeHeader: 'GPM/PI', nameBM: 'P. Moral / P. Islam', nameCN: '道德教育/伊斯兰教育' },
+            { key: 'PJK', excelHeader: 'PJK', gradeHeader: 'GPJK', nameBM: 'P. Jasmani & Kesihatan', nameCN: '体育与健康教育' },
+            { key: 'RBT', excelHeader: 'RBT', gradeHeader: 'GRBT', nameBM: 'Reka Bentuk & Teknologi', nameCN: '设计与工艺' },
+            { key: 'PSV', excelHeader: 'PSV', gradeHeader: 'GPSV', nameBM: 'P. Seni Visual', nameCN: '美术教育' },
+            { key: 'MZ', excelHeader: 'MZ', gradeHeader: 'GMZ', nameBM: 'P. Muzik', nameCN: '音乐教育' },
+        ];
+
+        // --- 评分标准更新 ---
+        const calculateGrade = (mark) => {
+            const m = parseFloat(mark);
+            if (isNaN(m)) return { grade: '-', comment: '-' };
+            // 82 - 100: A (Cemerlang)
+            if (m >= 82) return { grade: 'A', comment: 'Cemerlang' };
+            // 66 - 81: B (Kepujian)
+            if (m >= 66) return { grade: 'B', comment: 'Kepujian' };
+            // 50 - 65: C (Baik)
+            if (m >= 50) return { grade: 'C', comment: 'Baik' };
+            // 35 - 49: D (Memuaskan)
+            if (m >= 35) return { grade: 'D', comment: 'Memuaskan' };
+            // 20 - 34: E (Mencapai Tahap Minimum)
+            if (m >= 20) return { grade: 'E', comment: 'Mencapai Tahap Minimum' };
+            // 0 - 19: F (Belum Mencapai Tahap Minimum)
+            return { grade: 'F', comment: 'Belum Mencapai Tahap Minimum' };
+        };
+
+        const getCommentFromGrade = (grade) => {
+            if (!grade) return "-";
+            const g = grade.toUpperCase().trim();
+            if (g === 'A') return 'Cemerlang';
+            if (g === 'B') return 'Kepujian';
+            if (g === 'C') return 'Baik';
+            if (g === 'D') return 'Memuaskan';
+            if (g === 'E') return 'Mencapai Tahap Minimum';
+            if (g === 'F') return 'Belum Mencapai Tahap Minimum';
+            return '-';
+        };
+
+        const DEFAULT_CONFIG = {
+            schoolNameCN: "巴音新村华文小学",
+            schoolNameBM: "SEKOLAH JENIS KEBANGSAAN (CINA) KG BARU PAJAM",
+            schoolAddress: "71700 MANTIN, NEGERI SEMBILAN",
+            headmaster: "PN. SOH LAY CHING 苏丽青校长", 
+            classTeacher: "",
+            term: "2",
+            year: "2024/2025"
+        };
+
+        const App = () => {
+            const [students, setStudents] = useState([]);
+            const [config, setConfig] = useState(DEFAULT_CONFIG);
+            const [viewMode, setViewMode] = useState('setup');
+            
+            const [filterClass, setFilterClass] = useState('All');
+            const [filterYear, setFilterYear] = useState('All');
+            const [filterTerm, setFilterTerm] = useState('All');
+
+            const [csvUrl, setCsvUrl] = useState('');
+            const fileInputRef = useRef(null);
+
+            const uniqueClasses = useMemo(() => {
+                const classes = new Set(students.map(s => s.Class).filter(Boolean));
+                return ['All', ...Array.from(classes).sort()];
+            }, [students]);
+
+            const uniqueYears = useMemo(() => {
+                const years = new Set(students.map(s => s.AcademicYear).filter(Boolean));
+                return ['All', ...Array.from(years).sort()];
+            }, [students]);
+
+            const uniqueTerms = useMemo(() => {
+                const terms = new Set(students.map(s => s.Term).filter(Boolean));
+                return ['All', ...Array.from(terms).sort()]; 
+            }, [students]);
+
+            // --- 核心处理：分组计算排名 ---
+            const processedStudents = useMemo(() => {
+                if (students.length === 0) return [];
+
+                let allData = students.map(s => ({...s}));
+                
+                const groups = {}; 
+
+                allData.forEach(student => {
+                    const groupKey = `${student.AcademicYear}_${student.Class}`;
+                    if (!groups[groupKey]) groups[groupKey] = [];
+                    groups[groupKey].push(student);
+                });
+
+                Object.keys(groups).forEach(key => {
+                    const groupStudents = groups[key]; 
+                    const term2Records = groupStudents.filter(s => s.Term && s.Term.toString().includes('2'));
+
+                    const rankingList = term2Records.map(s2 => {
+                        const s1 = groupStudents.find(s => 
+                            s.Name === s2.Name && 
+                            (s.Term && s.Term.toString().includes('1'))
+                        );
+
+                        let p1Avg = 0;
+                        let p2Avg = parseFloat(s2.Average) || 0;
+                        let overallAvg = p2Avg; 
+
+                        if (s1) {
+                            p1Avg = parseFloat(s1.Average) || 0;
+                            overallAvg = (p1Avg + p2Avg) / 2;
+                        }
+
+                        return {
+                            id: s2.ID, 
+                            name: s2.Name,
+                            term: s2.Term,
+                            overallAvg: overallAvg,
+                            p1Record: s1 
+                        };
+                    });
+
+                    rankingList.sort((a, b) => b.overallAvg - a.overallAvg);
+
+                    rankingList.forEach((item, index) => {
+                        const targetStudent = allData.find(s => 
+                            s.AcademicYear === groupStudents[0].AcademicYear && 
+                            s.Class === groupStudents[0].Class && 
+                            s.Name === item.name && 
+                            s.Term === item.term
+                        );
+
+                        if (targetStudent) {
+                            targetStudent.CalculatedOverallRank = index + 1; 
+                            targetStudent.CalculatedOverallAvg = item.overallAvg.toFixed(2); 
+                            
+                            if (item.p1Record) {
+                                targetStudent._p1Total = item.p1Record.TotalScore;
+                                targetStudent._p1Avg = item.p1Record.Average;
+                                targetStudent._p1Rank = item.p1Record.ClassPosition;
+                                
+                                const p1Total = parseFloat(item.p1Record.TotalScore) || 0;
+                                const p2Total = parseFloat(targetStudent.TotalScore) || 0;
+                                targetStudent.CalculatedOverallTotal = ((p1Total + p2Total) / 2);
+                            }
+                        }
+                    });
+                });
+
+                return allData;
+            }, [students]);
+
+            const filteredStudents = useMemo(() => {
+                return processedStudents.filter(student => {
+                    const matchClass = filterClass === 'All' || student.Class === filterClass;
+                    const matchYear = filterYear === 'All' || student.AcademicYear === filterYear;
+                    const matchTerm = filterTerm === 'All' || student.Term == filterTerm; 
+                    return matchClass && matchYear && matchTerm;
+                });
+            }, [processedStudents, filterClass, filterYear, filterTerm]);
+
+            const processWorkbook = (wb) => {
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws, { defval: "" }); 
+                
+                if (!data || data.length === 0) {
+                    alert("无法读取数据，请检查文件是否为空。");
+                    return;
+                }
+
+                const cleanedData = data.map(row => {
+                    const student = {};
+                    student.Name = getProp(row, ['Nama Murid 学生姓名', 'Nama Murid', 'Nama', 'Student Name']) || "Nama Tidak Dijumpai";
+                    student.ID = getProp(row, ['No KP', 'ID', 'IC Number']) || student.Name; 
+                    student.Class = getProp(row, ['Tahun 年级', 'Kelas', 'Tahun', 'Class']) || "";
+                    const rawTerm = getProp(row, ['Penggal 学期', 'Penggal', 'Term']);
+                    student.Term = rawTerm ? String(rawTerm) : "";
+                    
+                    const rawDate = getProp(row, ['Tarikh 日期', 'Tarikh', 'Date']);
+                    student.Date = parseExcelDate(rawDate) || "";
+                    student.AcademicYear = getProp(row, ['Sesi Akademik 学年', 'Sesi Akademik', 'Year']) || "";
+                    student.TotalScore = getProp(row, ['Jumlah', 'Total']) || 0;
+                    const rawAvg = getProp(row, ['Purata', 'Average']);
+                    student.Average = (typeof rawAvg === 'number') ? rawAvg.toFixed(2) : rawAvg;
+                    student.ClassPosition = getProp(row, ['Kedudukan 班级名次', 'Kedudukan', 'Position']) || "";
+                    student.TeacherComment = getProp(row, ['Ulasan 评语', 'Ulasan', 'Comment']) || "";
+                    student.ClassTeacher = getProp(row, ['Nama Guru Kelas 级任老师姓名', 'Nama Guru Kelas', 'Teacher Name']) || "";
+
+                    SUBJECTS_MAP.forEach(sub => {
+                        student[sub.key] = getProp(row, [sub.excelHeader]);
+                        let grade = getProp(row, [sub.gradeHeader]);
+                        let comment = "";
+                        if (grade) {
+                            comment = getCommentFromGrade(grade);
+                        } else if (student[sub.key] !== undefined && student[sub.key] !== "") {
+                            const res = calculateGrade(student[sub.key]);
+                            grade = res.grade;
+                            comment = res.comment;
+                        }
+                        student[`${sub.key}_GRED`] = grade;
+                        student[`${sub.key}_NOTE`] = comment;
+                    });
+                    return student;
+                });
+
+                setStudents(cleanedData);
+                setViewMode('preview');
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const bstr = evt.target.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    processWorkbook(wb);
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            const handleUrlLoad = async () => {
+                if (!csvUrl) { alert("请输入链接"); return; }
+                try {
+                    const response = await fetch(csvUrl);
+                    if (!response.ok) throw new Error("网络请求失败");
+                    const text = await response.text();
+                    const wb = XLSX.read(text, { type: 'string', raw: true });
+                    processWorkbook(wb);
+                } catch (error) {
+                    alert("加载失败：" + error.message);
+                }
+            };
+
+            const downloadTemplate = () => {
+                const headers = {
+                    "Sesi Akademik 学年": "2024/2025", "Tarikh 日期": "24/06/2024", "Penggal 学期": "1", "Tahun 年级": "Tahun 6 六年级",
+                    "Nama Murid 学生姓名": "KAYSUS LEE", "BM": 88, "BC": 88, "BI": 92, "MT": 90, "SA": 90, "SEJ": 90, "PM/PI": 98,
+                    "PJK": 91, "RBT": 90, "PSV": 88, "MZ": 100, "Ulasan 评语": "Good", "Nama Guru Kelas 级任老师姓名": "CIK WONG",
+                    "Jumlah": 529, "Purata": 88.17, "Kedudukan 班级名次": "1"
+                };
+                const ws = XLSX.utils.json_to_sheet([headers]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Data");
+                XLSX.writeFile(wb, "SJKC_Report_Template.xlsx");
+            };
+
+            // --- 打印处理 ---
+            const handlePrint = () => {
+                // 设置打印标题，以便保存为 PDF 时自动使用该文件名
+                const originalTitle = document.title;
+                // 生成文件名：SJKC_Report_班级_年份.pdf
+                const className = filterClass !== 'All' ? filterClass.replace(/\s+/g, '_') : 'All_Classes';
+                const yearName = filterYear !== 'All' ? filterYear.replace(/\//g, '-') : 'All_Years';
+                document.title = `SJKC_Report_${className}_${yearName}`;
+                
+                window.print();
+                
+                // 打印后恢复标题
+                setTimeout(() => {
+                    document.title = originalTitle;
+                }, 1000);
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <nav className="bg-blue-800 text-white p-4 shadow-md no-print sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center space-x-2">
+                                <FileSpreadsheet className="w-6 h-6" />
+                                <h1 className="text-xl font-bold">SJKC 成绩单生成器</h1>
+                            </div>
+                            
+                            {students.length > 0 && viewMode === 'preview' && (
+                                <div className="flex space-x-2 items-center bg-blue-700 p-2 rounded flex-wrap gap-y-2">
+                                    <div className="flex items-center space-x-1">
+                                        <Filter className="w-4 h-4 text-blue-200" />
+                                        <span className="text-sm font-bold">筛选:</span>
+                                    </div>
+                                    <select className="text-black text-sm p-1 rounded min-w-[100px]" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
+                                        <option value="All">所有班级</option>
+                                        {uniqueClasses.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select className="text-black text-sm p-1 rounded min-w-[100px]" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+                                        <option value="All">所有年份</option>
+                                        {uniqueYears.filter(y => y !== 'All').map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                    <select className="text-black text-sm p-1 rounded min-w-[80px]" value={filterTerm} onChange={(e) => setFilterTerm(e.target.value)}>
+                                        <option value="All">所有学期</option>
+                                        {uniqueTerms.filter(t => t !== 'All').map(t => <option key={t} value={t}>学期 {t}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="flex space-x-4">
+                                <button onClick={() => setViewMode('setup')} className={`px-3 py-1 rounded hover:bg-blue-700 ${viewMode === 'setup' ? 'bg-blue-900' : ''}`}>设置与上传</button>
+                                <button onClick={() => setViewMode('preview')} disabled={students.length === 0} className={`px-3 py-1 rounded hover:bg-blue-700 ${viewMode === 'preview' ? 'bg-blue-900' : 'opacity-50 cursor-not-allowed'}`}>预览 ({filteredStudents.length})</button>
+                                <button onClick={handlePrint} disabled={filteredStudents.length === 0} className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded flex items-center space-x-2 font-bold"><Printer className="w-4 h-4" /><span>打印报表</span></button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {viewMode === 'setup' && (
+                        <div className="max-w-4xl mx-auto p-6 no-print">
+                            <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center text-gray-800"><Settings className="w-6 h-6 mr-2" /> 步骤一：学校信息</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">学校名称 (BM)</label>
+                                        <input type="text" value={config.schoolNameBM} onChange={(e) => setConfig({...config, schoolNameBM: e.target.value})} className="w-full border rounded p-2" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">学校名称 (CN)</label>
+                                        <input type="text" value={config.schoolNameCN} onChange={(e) => setConfig({...config, schoolNameCN: e.target.value})} className="w-full border rounded p-2" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">学校地址</label>
+                                        <input type="text" value={config.schoolAddress} onChange={(e) => setConfig({...config, schoolAddress: e.target.value})} className="w-full border rounded p-2" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">校长姓名 (用于签名栏)</label>
+                                        <input type="text" placeholder="如: PN. SOH LAY CHING" value={config.headmaster} onChange={(e) => setConfig({...config, headmaster: e.target.value})} className="w-full border rounded p-2" />
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-6">
+                                    <h2 className="text-2xl font-bold mb-4 flex items-center text-gray-800"><Upload className="w-6 h-6 mr-2" /> 步骤二：数据导入</h2>
+                                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                                        <div className="flex-1 bg-blue-50 p-4 rounded border border-blue-100">
+                                            <p className="font-bold text-blue-800 mb-2">选项 A: 下载模板</p>
+                                            <p className="text-sm text-blue-600 mb-3">如果您还没有数据，请先下载模板。</p>
+                                            <button onClick={downloadTemplate} className="bg-white hover:bg-gray-50 text-blue-700 px-4 py-2 rounded border border-blue-300 flex items-center w-full justify-center"><FileDown className="w-4 h-4 mr-2" />下载 Excel 模板</button>
+                                        </div>
+                                        <div className="flex-1 bg-green-50 p-4 rounded border border-green-100">
+                                            <p className="font-bold text-green-800 mb-2">选项 B: 上传 Excel 文件 或 CSV 链接</p>
+                                            <p className="text-sm text-green-600 mb-2">支持上传 .xlsx 文件或粘贴 .csv 链接。</p>
+                                            <input type="file" ref={fileInputRef} accept=".xlsx, .xls" onChange={handleFileUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 mb-3" />
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                                        <LinkIcon className="w-4 h-4 text-gray-400" />
+                                                    </div>
+                                                    <input type="text" placeholder="copy paste csv分享链接" className="block w-full p-2 pl-8 text-sm text-gray-900 border border-gray-300 rounded bg-gray-50" value={csvUrl} onChange={(e) => setCsvUrl(e.target.value)} />
+                                                </div>
+                                                <button onClick={handleUrlLoad} className="text-white bg-green-700 hover:bg-green-800 font-medium rounded text-sm px-4 py-2">加载</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {viewMode === 'preview' && (
+                        <div className="print-container bg-gray-100 pb-10">
+                            <div className="no-print bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 max-w-4xl mx-auto mt-4">
+                                <p className="font-bold">提示：</p>
+                                <p>1. 点击“打印报表”后，请在打印窗口中选择 <b>“另存为 PDF”</b> 即可保存文件。</p>
+                            </div>
+
+                            {filteredStudents.length > 0 ? (
+                                filteredStudents.map((student, idx) => (
+                                    <ReportCard 
+                                        key={idx} 
+                                        data={student} 
+                                        config={config} 
+                                        pageIndex={idx} 
+                                        totalPages={filteredStudents.length} 
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center py-20 text-gray-500 no-print">没有符合筛选条件的学生</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const ReportCard = ({ data, config, pageIndex, totalPages }) => {
+            const isTerm2 = data.Term && data.Term.toString().includes('2');
+            
+            // 使用在 useMemo 中计算好的数据
+            const t1Score = data._p1Total || '-'; 
+            const t2Score = data.TotalScore;      
+            const t1Avg = data._p1Avg || '-';     
+            const t2Avg = data.Average;           
+            const t1Rank = data._p1Rank || '-';   
+            const t2Rank = data.ClassPosition;    
+            
+            const overallTotal = data.CalculatedOverallTotal || '-';
+            const overallAvg = data.CalculatedOverallAvg || '-';
+            const overallRank = data.CalculatedOverallRank || '-';
+
+            return (
+                <div className="page-break flex justify-center">
+                    <div className="a4-preview relative">
+                        {/* 头部：带 Logo 和校名 */}
+                        <div className="relative mb-2 pt-2 flex items-center justify-center min-h-[120px]">
+                            {/* 校徽：绝对定位到左侧，垂直居中 */}
+                            <img 
+                                src="https://i.postimg.cc/0rTmNV6T/Logo-4.png" 
+                                className="absolute left-0 w-24 h-auto" 
+                                style={{ top: '50%', transform: 'translateY(-50%)' }}
+                                alt="School Logo"
+                            />
+                            
+                            {/* 学校信息：居中显示，左右留出空间避免被 Logo 遮挡 */}
+                            <div className="text-center w-full pl-28 pr-28">
+                                <h1 className="text-2xl font-bold font-kaiti" style={{lineHeight: '1.2'}}>{config.schoolNameCN}</h1>
+                                <h2 className="text-lg font-bold uppercase leading-tight" style={{whiteSpace: 'nowrap'}}>{config.schoolNameBM}</h2>
+                                <p className="text-sm uppercase tracking-wide">{config.schoolAddress}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-2 border-b-2 border-black w-full mx-auto"></div>
+                        <div className="border-b border-black w-full mx-auto mt-1 mb-2"></div>
+
+                        {/* 学生信息 */}
+                        <div className="mb-4 font-serif pt-4">
+                            <div className="info-row">
+                                <span className="info-label w-24">NAMA / 姓名:</span>
+                                <span className="info-value uppercase font-bold">{data.Name}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="info-label w-24">KELAS / 班级:</span>
+                                <span className="info-value text-left">{data.Class}</span>
+                            </div>
+                            <div className="flex w-full gap-8">
+                                <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
+                                    <span className="info-label">PENGGAL / 学期:</span>
+                                    <span className="info-value text-center">{data.Term}</span>
+                                </div>
+                                <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
+                                    <span className="info-label">TARIKH / 日期:</span>
+                                    <span className="info-value text-center">{data.Date}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="text-center mb-4 mt-6">
+                            <h3 className="text-2xl font-bold font-kaiti mb-1">各科学业成绩记录表</h3>
+                            <h3 className="text-sm font-bold uppercase font-serif underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
+                        </div>
+
+                        {/* 成绩表格 */}
+                        <table className="report-table mb-4">
+                            <thead>
+                                <tr>
+                                    <th className="w-[35%] text-left pl-4">MATA PELAJARAN / 科目</th>
+                                    <th className="w-[12%]">MARKAH</th>
+                                    <th className="w-[12%]">GRED</th>
+                                    <th className="w-[41%]">CATATAN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {SUBJECTS_MAP.map((sub, idx) => {
+                                    const mark = data[sub.key];
+                                    const grade = data[`${sub.key}_GRED`];
+                                    const note = data[`${sub.key}_NOTE`];
+                                    
+                                    if ((mark === undefined || mark === null || mark === "") && (!grade || grade === "-")) return null;
+
+                                    return (
+                                        <tr key={idx}>
+                                            <td className="pl-4">
+                                                <div className="subject-cell">
+                                                    <div className="font-bold uppercase text-sm">{sub.nameBM}</div>
+                                                    <div className="text-md font-kaiti">{sub.nameCN}</div>
+                                                </div>
+                                            </td>
+                                            <td className="text-center font-bold text-lg">{mark}</td>
+                                            <td className="text-center font-bold text-lg">{grade}</td>
+                                            <td className="text-center text-sm italic px-2">{note}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
+                        {/* 分析表格 */}
+                        <div className="mb-4 break-inside-avoid">
+                            <h4 className="font-bold mb-1 text-sm uppercase underline">Analisis / 分析</h4>
+                            <table className="report-table">
+                                <thead>
+                                    <tr>
+                                        {/* 强制不换行，并增加第一列宽度，确保“班级名次”不换行 */}
+                                        <th className="text-left pl-4 whitespace-nowrap w-[40%]">ASPEK</th>
+                                        {isTerm2 ? (
+                                            <>
+                                                <th className="w-[20%]">Penggal 1</th>
+                                                <th className="w-[20%]">Penggal 2</th>
+                                                <th className="w-[20%]">Keseluruhan</th>
+                                            </>
+                                        ) : (
+                                            <th className="w-[60%]">KEPUTUSAN / 结果</th>
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="font-bold pl-4 whitespace-nowrap">JUMLAH MARKAH / 总分</td>
+                                        {isTerm2 ? (
+                                            <>
+                                                <td className="text-center">{t1Score}</td>
+                                                <td className="text-center font-bold">{t2Score}</td>
+                                                <td className="text-center font-bold">{overallTotal}</td>
+                                            </>
+                                        ) : (
+                                            <td className="text-center font-bold">{data.TotalScore}</td>
+                                        )}
+                                    </tr>
+                                    <tr>
+                                        <td className="font-bold pl-4 whitespace-nowrap">PURATA / 平均分</td>
+                                        {isTerm2 ? (
+                                            <>
+                                                <td className="text-center">{t1Avg}</td>
+                                                <td className="text-center font-bold">{t2Avg}</td>
+                                                <td className="text-center font-bold">{overallAvg}</td>
+                                            </>
+                                        ) : (
+                                            <td className="text-center font-bold">{data.Average}</td>
+                                        )}
+                                    </tr>
+                                    <tr>
+                                        {/* 关键修复：强制不换行 */}
+                                        <td className="font-bold pl-4 whitespace-nowrap">KEDUDUKAN DALAM KELAS / 班级名次</td>
+                                        {isTerm2 ? (
+                                            <>
+                                                <td className="text-center">#{t1Rank}</td>
+                                                <td className="text-center font-bold">#{t2Rank}</td>
+                                                <td className="text-center font-bold text-lg">#{overallRank}</td>
+                                            </>
+                                        ) : (
+                                            <td className="text-center font-bold text-lg">#{data.ClassPosition}</td>
+                                        )}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 评语 */}
+                        <div className="mb-8 border border-black p-3 rounded min-h-[80px] break-inside-avoid">
+                            <span className="font-bold block mb-1 text-sm underline">ULASAN GURU / 教师评语:</span>
+                            <p className="italic text-lg pl-2 pt-1">"{data.TeacherComment || 'Teruskan usaha anda. / 继续努力。'}"</p>
+                        </div>
+
+                        {/* 签名栏 */}
+                        <div className="flex justify-between items-start mt-16 break-inside-avoid text-center text-sm">
+                            <div className="w-1/3 px-4 flex flex-col items-center">
+                                <div className="signature-line"></div>
+                                <p className="font-bold">GURU KELAS</p>
+                                <p className="font-kaiti">班主任</p>
+                                <p className="text-xs mt-1 uppercase font-bold whitespace-nowrap">{data.ClassTeacher || config.classTeacher || '                    '}</p>
+                            </div>
+                            <div className="w-1/3 px-4 flex flex-col items-center">
+                                <div className="signature-line"></div>
+                                <p className="font-bold">GURU BESAR</p>
+                                <p className="font-kaiti">校长</p>
+                                <p className="text-xs mt-1 uppercase font-bold">{config.headmaster || '                    '}</p>
+                            </div>
+                            <div className="w-1/3 px-4 flex flex-col items-center">
+                                <div className="signature-line"></div>
+                                <p className="font-bold">IBU BAPA / PENJAGA</p>
+                                <p className="font-kaiti">家长 / 监护人</p>
+                            </div>
+                        </div>
+
+                        <div className="absolute bottom-4 right-4 text-xs text-gray-400 no-print">
+                            Page {pageIndex + 1} of {totalPages}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
