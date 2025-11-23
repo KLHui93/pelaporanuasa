@@ -34,17 +34,20 @@
             font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
         }
 
-        /* 打印样式优化 */
+        /* 打印样式优化 - 核心部分 */
         @media print {
             @page {
-                size: A4;
-                margin: 0; 
+                size: A4; /* 明确指定 A4 */
+                margin: 0; /* 浏览器打印边距设为0，完全由 CSS 控制 */
             }
             body {
                 background-color: white;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                width: 210mm;
+                height: 297mm;
             }
+            /* 隐藏所有不需要打印的元素 */
             .no-print {
                 display: none !important;
             }
@@ -53,51 +56,56 @@
                 margin: 0;
                 padding: 0;
             }
+            /* 强制分页：每个学生一页 */
             .page-break {
                 page-break-after: always;
-                height: 100vh; 
+                page-break-inside: avoid;
+                min-height: 296mm; /* 稍微小于 297mm 以防溢出产生空白页 */
                 position: relative;
+                overflow: hidden; /* 防止内容溢出导致多页 */
             }
             table, th, td {
                 border-color: #000 !important;
             }
         }
 
-        /* A4 预览样式 */
+        /* A4 预览样式 (屏幕上模拟) */
         .a4-preview {
             width: 210mm;
-            min-height: 297mm;
-            padding: 15mm 20mm; 
+            min-height: 296mm; /* 对应打印高度 */
+            padding: 12mm 15mm; /* 调整内边距：上下12mm，左右15mm，留出更多空间 */
             margin: 20px auto;
             background: white;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
             position: relative;
+            /* 再次确保预览区域字体正确 */
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+            box-sizing: border-box; /* 确保 padding 包含在宽高内 */
         }
         
-        /* 表格样式 */
+        /* 表格样式 - 紧凑型 */
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11pt;
-            margin-bottom: 1.5rem;
+            font-size: 10.5pt; /* 稍微调小字体以适应更多内容 */
+            margin-bottom: 1rem;
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 4px 8px;
+            padding: 3px 6px; /* 减小单元格内边距 */
             vertical-align: middle;
-            line-height: 1.3;
+            line-height: 1.2;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
-            padding-top: 8px;
-            padding-bottom: 8px;
+            padding-top: 5px;
+            padding-bottom: 5px;
         }
         
-        /* 科目列样式 */
+        /* 科目列样式 - 强制不换行 */
         .subject-cell {
             display: flex;
             flex-direction: column;
@@ -120,14 +128,14 @@
             display: flex;
             align-items: flex-end;
             width: 100%;
-            margin-bottom: 6px;
+            margin-bottom: 4px; /* 减小行间距 */
         }
         .info-label {
             font-weight: bold;
             white-space: nowrap;
             margin-right: 8px;
             min-width: fit-content;
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif; /* 统一字体 */
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
             font-size: 0.9em;
             text-transform: uppercase; 
         }
@@ -135,10 +143,16 @@
             flex-grow: 1;
             border-bottom: 1px dotted #000;
             padding-left: 8px;
-            padding-bottom: 2px;
+            padding-bottom: 1px;
             font-weight: bold;
-            min-height: 1.5em;
+            min-height: 1.4em;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+        }
+        
+        /* 底部签名栏定位 */
+        .footer-section {
+            margin-top: 2rem;
+            /* 也可以考虑 absolute bottom 但 flow layout 通常更安全 */
         }
     </style>
 </head>
@@ -603,7 +617,7 @@
                         <div className="border-b border-black w-full mx-auto mt-1 mb-2"></div>
 
                         {/* 学生信息 */}
-                        <div className="mb-4 font-serif pt-4">
+                        <div className="mb-4 pt-4">
                             <div className="info-row">
                                 <span className="info-label w-24">NAMA / 姓名:</span>
                                 <span className="info-value uppercase font-bold">{data.Name}</span>
@@ -626,7 +640,7 @@
 
                         <div className="text-center mb-4 mt-6">
                             <h3 className="text-2xl font-bold font-kaiti mb-1">各科学业成绩记录表</h3>
-                            <h3 className="text-sm font-bold uppercase font-serif underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
+                            <h3 className="text-sm font-bold uppercase underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
                         </div>
 
                         {/* 成绩表格 */}
@@ -732,7 +746,7 @@
                         </div>
 
                         {/* 签名栏 */}
-                        <div className="flex justify-between items-start mt-16 break-inside-avoid text-center text-sm">
+                        <div className="flex justify-between items-start mt-16 break-inside-avoid text-center text-sm footer-section">
                             <div className="w-1/3 px-4 flex flex-col items-center">
                                 <div className="signature-line"></div>
                                 <p className="font-bold">GURU KELAS</p>
