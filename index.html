@@ -59,7 +59,7 @@
                 page-break-after: always;
                 page-break-inside: avoid;
                 width: 210mm;
-                height: 297mm; /* 严格 A4 高度 */
+                height: 296mm; /* 严格 A4 高度，留1mm缓冲 */
                 overflow: hidden; /* 关键：切断溢出内容，确保不跑去第二页 */
                 position: relative;
             }
@@ -67,7 +67,8 @@
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
-                height: 297mm !important; /* 打印时强制全高 */
+                height: 296mm !important; /* 打印时强制全高 */
+                padding: 10mm !important; /* 打印时保持 10mm 边距 */
             }
         }
 
@@ -82,7 +83,7 @@
 
         .a4-preview {
             width: 210mm;
-            height: 297mm; /* 严格 A4 高度 */
+            height: 296mm; /* 严格 A4 高度 */
             padding: 10mm 12mm; /* 极窄边距：上下10mm，左右12mm */
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
@@ -90,12 +91,14 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column; /* 垂直布局 */
-            justify-content: space-between; /* 关键：头顶天，脚立地，内容居中 */
+            /* 关键布局：Space Between 会把 Header 顶上去，Footer 压到底 */
+            justify-content: space-between; 
         }
         
         /* 顶部区域 */
         .header-section {
             flex-shrink: 0; /* 防止头部被压缩 */
+            margin-bottom: 5px;
         }
 
         /* 中间内容区域 */
@@ -103,13 +106,14 @@
             flex-grow: 1; /* 占据剩余所有空间 */
             display: flex;
             flex-direction: column;
-            /* justify-content: center; 可选：让表格在中间垂直居中，或者靠上 */
+            /* 可选：justify-content: flex-start; 让内容靠上 */
         }
 
         /* 底部签名区域 */
         .footer-section {
             flex-shrink: 0; /* 防止底部被压缩 */
-            margin-top: 5px; /* 稍微留白 */
+            margin-top: auto; /* 关键：这也确保它推到底部 */
+            padding-top: 5px; /* 稍微留白 */
         }
 
         /* --- 表格样式优化 (极致紧凑) --- */
@@ -180,9 +184,10 @@
         .comment-box {
             border: 1px solid black;
             padding: 5px;
-            border-radius: 4px;
-            min-height: 50px;
+            border-radius: 0; /* 正式文件通常不用圆角 */
+            min-height: 60px;
             margin-bottom: 5px;
+            flex-grow: 1; /* 让评语框尽可能利用剩余空间 */
         }
     </style>
 </head>
