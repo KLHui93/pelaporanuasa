@@ -25,26 +25,27 @@
         /* --- 核心字体设置 --- */
         body {
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
-            background-color: #525659; /* 预览背景色 */
+            background-color: #525659;
             color: #000;
             margin: 0;
         }
 
-        /* 强制楷体类 */
         .font-kaiti {
             font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
         }
 
-        /* --- A4 纸张模拟与打印样式 --- */
+        /* --- 打印样式 (关键调整) --- */
         @media print {
             @page {
-                size: A4;
-                margin: 0; /* 零边距，完全由内部 CSS 控制 */
+                size: A4 portrait; /* 强制纵向 */
+                margin: 0; /* 零边距 */
             }
-            body {
+            html, body {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                padding: 0;
                 background-color: white;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
             }
             .no-print {
                 display: none !important;
@@ -54,21 +55,22 @@
                 margin: 0;
                 padding: 0;
             }
-            /* 强制单页逻辑 */
             .page-break {
                 page-break-after: always;
                 page-break-inside: avoid;
                 width: 210mm;
-                height: 296mm; /* 严格 A4 高度，留1mm缓冲 */
-                overflow: hidden; /* 关键：切断溢出内容，确保不跑去第二页 */
+                height: 296mm; /* 严格控制高度 */
+                overflow: hidden; /* 关键：如果内容溢出，直接隐藏而不是分也，强迫排版在页内 */
                 position: relative;
+                display: block;
             }
             .a4-preview {
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
-                height: 296mm !important; /* 打印时强制全高 */
-                padding: 10mm !important; /* 打印时保持 10mm 边距 */
+                width: 210mm !important;
+                height: 296mm !important;
+                padding: 8mm !important; /* 打印时的极窄边距 */
             }
         }
 
@@ -83,69 +85,62 @@
 
         .a4-preview {
             width: 210mm;
-            height: 296mm; /* 严格 A4 高度 */
-            padding: 10mm 12mm; /* 极窄边距：上下10mm，左右12mm */
+            height: 296mm; /* 屏幕上也模拟严格高度 */
+            padding: 8mm 10mm; /* 上下 8mm, 左右 10mm */
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
             position: relative;
             box-sizing: border-box;
             display: flex;
-            flex-direction: column; /* 垂直布局 */
-            /* 关键布局：Space Between 会把 Header 顶上去，Footer 压到底 */
-            justify-content: space-between; 
+            flex-direction: column; 
+            justify-content: space-between; /* 核心布局：两端对齐 */
         }
         
-        /* 顶部区域 */
+        /* --- 区域布局 --- */
         .header-section {
-            flex-shrink: 0; /* 防止头部被压缩 */
-            margin-bottom: 5px;
+            flex-shrink: 0; /* 头部不许压缩 */
         }
 
-        /* 中间内容区域 */
         .content-section {
-            flex-grow: 1; /* 占据剩余所有空间 */
+            flex-grow: 1; /* 内容区域自动占据剩余空间 */
             display: flex;
             flex-direction: column;
-            /* 可选：justify-content: flex-start; 让内容靠上 */
+            overflow: hidden; /* 防止撑开 */
         }
 
-        /* 底部签名区域 */
         .footer-section {
-            flex-shrink: 0; /* 防止底部被压缩 */
-            margin-top: auto; /* 关键：这也确保它推到底部 */
-            padding-top: 5px; /* 稍微留白 */
+            flex-shrink: 0; /* 底部不许压缩 */
+            padding-top: 5px;
         }
 
-        /* --- 表格样式优化 (极致紧凑) --- */
+        /* --- 表格样式 (极紧凑) --- */
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10pt; /* 字体调至 10pt */
-            margin-bottom: 5px; 
+            font-size: 10pt; /* 字体再小一点 */
+            margin-bottom: 4px; 
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 2px 4px; /* 极小内边距 */
+            padding: 1px 4px; /* 极小内边距 */
             vertical-align: middle;
-            line-height: 1.1; /* 紧凑行高 */
+            line-height: 1.1; 
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
-            padding-top: 3px;
-            padding-bottom: 3px;
+            padding-top: 2px;
+            padding-bottom: 2px;
         }
         
-        /* 科目列 */
         .subject-cell {
             display: block; 
             white-space: nowrap; 
             overflow: visible;
         }
         
-        /* 签名栏 */
         .signature-line {
             border-bottom: 1px solid black;
             display: block;
@@ -154,7 +149,6 @@
             height: 1px;
         }
         
-        /* 头部信息行 */
         .info-row {
             display: flex;
             align-items: flex-end;
@@ -164,7 +158,7 @@
         .info-label {
             font-weight: bold;
             white-space: nowrap;
-            margin-right: 8px;
+            margin-right: 5px;
             min-width: fit-content;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
             font-size: 0.9em;
@@ -173,21 +167,25 @@
         .info-value {
             flex-grow: 1;
             border-bottom: 1px dotted #000;
-            padding-left: 8px;
+            padding-left: 5px;
             padding-bottom: 0px;
             font-weight: bold;
-            min-height: 1.2em;
+            min-height: 1.1em;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         
-        /* 评语框 */
+        /* 评语框 - 弹性高度 */
+        .comment-box-container {
+            flex-grow: 1; /* 占据中间剩余的所有空间 */
+            display: flex;
+            flex-direction: column;
+            min-height: 40px; /* 最小高度 */
+        }
         .comment-box {
             border: 1px solid black;
-            padding: 5px;
-            border-radius: 0; /* 正式文件通常不用圆角 */
-            min-height: 60px;
-            margin-bottom: 5px;
-            flex-grow: 1; /* 让评语框尽可能利用剩余空间 */
+            padding: 4px;
+            flex-grow: 1; /* 填满容器 */
+            width: 100%;
         }
     </style>
 </head>
@@ -245,7 +243,7 @@
             { key: 'MZ', excelHeader: 'MZ', gradeHeader: 'GMZ', nameBM: 'P. Muzik', nameCN: '音乐教育' },
         ];
 
-        // --- 评分标准 ---
+        // --- 评分标准更新 ---
         const calculateGrade = (mark) => {
             const m = parseFloat(mark);
             if (isNaN(m)) return { grade: '-', comment: '-' };
@@ -620,10 +618,10 @@
             return (
                 <div className="page-break flex justify-center">
                     <div className="a4-preview relative">
-                        {/* 头部容器：Header Section - 保持在顶部 */}
+                        {/* 头部容器 */}
                         <div className="header-section">
-                            <div className="relative flex items-center justify-center min-h-[100px] mb-2">
-                                {/* 校徽：垂直居中 */}
+                            <div className="relative flex items-center justify-center min-h-[80px] mb-2">
+                                {/* 校徽 */}
                                 <img 
                                     src="https://i.postimg.cc/0rTmNV6T/Logo-4.png" 
                                     className="absolute left-0 w-20 h-auto" 
@@ -670,7 +668,7 @@
                             </div>
                         </div>
 
-                        {/* 内容容器：Content Section - 自动伸缩 */}
+                        {/* 内容容器 */}
                         <div className="content-section">
                             {/* 成绩表格 */}
                             <table className="report-table mb-2">
@@ -766,14 +764,16 @@
                                 </table>
                             </div>
 
-                            {/* 评语 - 自动填充剩余空间 */}
-                            <div className="comment-box">
+                            {/* 评语 - 弹性填充 */}
+                            <div className="comment-box-container">
                                 <span className="font-bold block mb-1 text-xs underline">ULASAN GURU / 教师评语:</span>
-                                <p className="italic text-md pl-2 pt-1">"{data.TeacherComment || 'Teruskan usaha anda. / 继续努力。'}"</p>
+                                <div className="comment-box">
+                                    <p className="italic text-md pl-2 pt-1">"{data.TeacherComment || 'Teruskan usaha anda. / 继续努力。'}"</p>
+                                </div>
                             </div>
                         </div>
 
-                        {/* 底部容器：Footer Section - 强制底部 */}
+                        {/* 底部容器 */}
                         <div className="footer-section flex justify-between items-start text-center text-sm">
                             <div className="w-1/3 px-2 flex flex-col items-center">
                                 <div className="signature-line"></div>
