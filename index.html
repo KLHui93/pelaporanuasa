@@ -25,7 +25,7 @@
         /* --- 核心字体设置 --- */
         body {
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
-            background-color: #525659;
+            background-color: #525659; /* 预览背景色 */
             color: #000;
             margin: 0;
         }
@@ -39,7 +39,7 @@
         @media print {
             @page {
                 size: A4;
-                margin: 0; 
+                margin: 0; /* 零边距，完全由内部 CSS 控制 */
             }
             body {
                 background-color: white;
@@ -54,18 +54,20 @@
                 margin: 0;
                 padding: 0;
             }
+            /* 强制单页逻辑 */
             .page-break {
                 page-break-after: always;
+                page-break-inside: avoid;
                 width: 210mm;
-                height: 296mm; 
-                overflow: hidden; 
+                height: 297mm; /* 严格 A4 高度 */
+                overflow: hidden; /* 关键：切断溢出内容，确保不跑去第二页 */
                 position: relative;
             }
             .a4-preview {
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
-                page-break-inside: avoid;
+                height: 297mm !important; /* 打印时强制全高 */
             }
         }
 
@@ -80,57 +82,71 @@
 
         .a4-preview {
             width: 210mm;
-            height: 296mm; /* 严格固定高度 */
-            padding: 12mm 15mm; /* 上下 12mm, 左右 15mm */
+            height: 297mm; /* 严格 A4 高度 */
+            padding: 10mm 12mm; /* 极窄边距：上下10mm，左右12mm */
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
             position: relative;
             box-sizing: border-box;
-            overflow: hidden; 
             display: flex;
-            flex-direction: column; 
-            justify-content: space-between; 
+            flex-direction: column; /* 垂直布局 */
+            justify-content: space-between; /* 关键：头顶天，脚立地，内容居中 */
         }
         
-        /* --- 表格样式优化 (紧凑型) --- */
+        /* 顶部区域 */
+        .header-section {
+            flex-shrink: 0; /* 防止头部被压缩 */
+        }
+
+        /* 中间内容区域 */
+        .content-section {
+            flex-grow: 1; /* 占据剩余所有空间 */
+            display: flex;
+            flex-direction: column;
+            /* justify-content: center; 可选：让表格在中间垂直居中，或者靠上 */
+        }
+
+        /* 底部签名区域 */
+        .footer-section {
+            flex-shrink: 0; /* 防止底部被压缩 */
+            margin-top: 5px; /* 稍微留白 */
+        }
+
+        /* --- 表格样式优化 (极致紧凑) --- */
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10.5pt; 
-            margin-bottom: 8px; 
+            font-size: 10pt; /* 字体调至 10pt */
+            margin-bottom: 5px; 
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 3px 5px; 
+            padding: 2px 4px; /* 极小内边距 */
             vertical-align: middle;
-            line-height: 1.15;
+            line-height: 1.1; /* 紧凑行高 */
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
-            padding-top: 4px;
-            padding-bottom: 4px;
+            padding-top: 3px;
+            padding-bottom: 3px;
         }
         
-        /* 科目列 - 强制不换行，并排显示 */
+        /* 科目列 */
         .subject-cell {
-            display: block; /* 改为 block 让 span 自然流动，但配合 whitespace-nowrap 强制一行 */
+            display: block; 
             white-space: nowrap; 
-            overflow: visible; /* 允许稍微溢出一点点以免被切掉，或者 hidden */
+            overflow: visible;
         }
         
         /* 签名栏 */
-        .footer-section {
-            margin-top: auto; 
-            padding-top: 10px;
-        }
         .signature-line {
             border-bottom: 1px solid black;
             display: block;
             width: 100%;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             height: 1px;
         }
         
@@ -139,7 +155,7 @@
             display: flex;
             align-items: flex-end;
             width: 100%;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .info-label {
             font-weight: bold;
@@ -154,10 +170,19 @@
             flex-grow: 1;
             border-bottom: 1px dotted #000;
             padding-left: 8px;
-            padding-bottom: 1px;
+            padding-bottom: 0px;
             font-weight: bold;
-            min-height: 1.4em;
+            min-height: 1.2em;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
+        }
+        
+        /* 评语框 */
+        .comment-box {
+            border: 1px solid black;
+            padding: 5px;
+            border-radius: 4px;
+            min-height: 50px;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -215,21 +240,15 @@
             { key: 'MZ', excelHeader: 'MZ', gradeHeader: 'GMZ', nameBM: 'P. Muzik', nameCN: '音乐教育' },
         ];
 
-        // --- 评分标准更新 ---
+        // --- 评分标准 ---
         const calculateGrade = (mark) => {
             const m = parseFloat(mark);
             if (isNaN(m)) return { grade: '-', comment: '-' };
-            // 82 - 100: A (Cemerlang)
             if (m >= 82) return { grade: 'A', comment: 'Cemerlang' };
-            // 66 - 81: B (Kepujian)
             if (m >= 66) return { grade: 'B', comment: 'Kepujian' };
-            // 50 - 65: C (Baik)
             if (m >= 50) return { grade: 'C', comment: 'Baik' };
-            // 35 - 49: D (Memuaskan)
             if (m >= 35) return { grade: 'D', comment: 'Memuaskan' };
-            // 20 - 34: E (Mencapai Tahap Minimum)
             if (m >= 20) return { grade: 'E', comment: 'Mencapai Tahap Minimum' };
-            // 0 - 19: F (Belum Mencapai Tahap Minimum)
             return { grade: 'F', comment: 'Belum Mencapai Tahap Minimum' };
         };
 
@@ -469,7 +488,7 @@
                         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center space-x-2">
                                 <FileSpreadsheet className="w-6 h-6" />
-                                <h1 className="text-xl font-bold">SJKC Smart Report (智能报表)</h1>
+                                <h1 className="text-xl font-bold">Smart Report 智能报表</h1>
                             </div>
                             
                             {students.length > 0 && viewMode === 'preview' && (
@@ -596,172 +615,174 @@
             return (
                 <div className="page-break flex justify-center">
                     <div className="a4-preview relative">
-                        {/* 头部：带 Logo 和校名 */}
-                        <div className="relative mb-2 pt-2 flex items-center justify-center min-h-[120px]">
-                            {/* 校徽：绝对定位到左侧，垂直居中 */}
-                            <img 
-                                src="https://i.postimg.cc/0rTmNV6T/Logo-4.png" 
-                                className="absolute left-0 w-24 h-auto" 
-                                style={{ top: '50%', transform: 'translateY(-50%)' }}
-                                alt="School Logo"
-                            />
+                        {/* 头部容器：Header Section - 保持在顶部 */}
+                        <div className="header-section">
+                            <div className="relative flex items-center justify-center min-h-[100px] mb-2">
+                                {/* 校徽：垂直居中 */}
+                                <img 
+                                    src="https://i.postimg.cc/0rTmNV6T/Logo-4.png" 
+                                    className="absolute left-0 w-20 h-auto" 
+                                    style={{ top: '50%', transform: 'translateY(-50%)' }}
+                                    alt="School Logo"
+                                />
+                                
+                                {/* 学校信息 */}
+                                <div className="text-center w-full pl-24 pr-24">
+                                    <h1 className="text-2xl font-bold font-kaiti" style={{lineHeight: '1.2'}}>{config.schoolNameCN}</h1>
+                                    <h2 className="text-lg font-bold uppercase leading-tight" style={{whiteSpace: 'nowrap'}}>{config.schoolNameBM}</h2>
+                                    <p className="text-sm uppercase tracking-wide">{config.schoolAddress}</p>
+                                </div>
+                            </div>
                             
-                            {/* 学校信息：居中显示，左右留出空间避免被 Logo 遮挡 */}
-                            <div className="text-center w-full pl-28 pr-28">
-                                <h1 className="text-2xl font-bold font-kaiti" style={{lineHeight: '1.2'}}>{config.schoolNameCN}</h1>
-                                <h2 className="text-lg font-bold uppercase leading-tight" style={{whiteSpace: 'nowrap'}}>{config.schoolNameBM}</h2>
-                                <p className="text-sm uppercase tracking-wide">{config.schoolAddress}</p>
-                            </div>
-                        </div>
-                        
-                        <div className="mt-2 border-b-2 border-black w-full mx-auto"></div>
-                        <div className="border-b border-black w-full mx-auto mt-1 mb-2"></div>
+                            <div className="border-b-2 border-black w-full mx-auto"></div>
+                            <div className="border-b border-black w-full mx-auto mt-1 mb-2"></div>
 
-                        {/* 学生信息 */}
-                        <div className="mb-4 font-serif pt-4">
-                            <div className="info-row">
-                                <span className="info-label w-24">NAMA / 姓名:</span>
-                                <span className="info-value uppercase font-bold">{data.Name}</span>
-                            </div>
-                            <div className="info-row">
-                                <span className="info-label w-24">KELAS / 班级:</span>
-                                <span className="info-value text-left">{data.Class}</span>
-                            </div>
-                            <div className="flex w-full gap-8">
-                                <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
-                                    <span className="info-label">PENGGAL / 学期:</span>
-                                    <span className="info-value text-center">{data.Term}</span>
+                            {/* 学生信息 */}
+                            <div className="mb-2 pt-2">
+                                <div className="info-row">
+                                    <span className="info-label w-24">NAMA / 姓名:</span>
+                                    <span className="info-value uppercase font-bold">{data.Name}</span>
                                 </div>
-                                <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
-                                    <span className="info-label">TARIKH / 日期:</span>
-                                    <span className="info-value text-center">{data.Date}</span>
+                                <div className="info-row">
+                                    <span className="info-label w-24">KELAS / 班级:</span>
+                                    <span className="info-value text-left">{data.Class}</span>
+                                </div>
+                                <div className="flex w-full gap-8">
+                                    <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
+                                        <span className="info-label">PENGGAL / 学期:</span>
+                                        <span className="info-value text-center">{data.Term}</span>
+                                    </div>
+                                    <div className="info-row" style={{marginBottom: 0, width: '50%'}}>
+                                        <span className="info-label">TARIKH / 日期:</span>
+                                        <span className="info-value text-center">{data.Date}</span>
+                                    </div>
                                 </div>
                             </div>
+
+                            <div className="text-center mb-2 mt-2">
+                                <h3 className="text-xl font-bold font-kaiti mb-1">各科学业成绩记录表</h3>
+                                <h3 className="text-xs font-bold uppercase underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
+                            </div>
                         </div>
 
-                        <div className="text-center mb-4 mt-6">
-                            <h3 className="text-2xl font-bold font-kaiti mb-1">各科学业成绩记录表</h3>
-                            <h3 className="text-sm font-bold uppercase font-serif underline">REKOD PROFIL MENGIKUT MATA PELAJARAN</h3>
-                        </div>
-
-                        {/* 成绩表格 */}
-                        <table className="report-table mb-4">
-                            <thead>
-                                <tr>
-                                    {/* 32% + 10% + 10% + 48% */}
-                                    <th className="w-[32%] text-left pl-4">MATA PELAJARAN / 科目</th>
-                                    <th className="w-[10%]">MARKAH</th>
-                                    <th className="w-[10%]">GRED</th>
-                                    <th className="w-[48%]">CATATAN</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {SUBJECTS_MAP.map((sub, idx) => {
-                                    const mark = data[sub.key];
-                                    const grade = data[`${sub.key}_GRED`];
-                                    const note = data[`${sub.key}_NOTE`];
-                                    
-                                    if ((mark === undefined || mark === null || mark === "") && (!grade || grade === "-")) return null;
-
-                                    return (
-                                        <tr key={idx}>
-                                            <td className="pl-4">
-                                                <div className="subject-cell">
-                                                    <span className="font-bold uppercase text-xs">{sub.nameBM}</span>
-                                                    <span className="text-sm font-kaiti ml-2">{sub.nameCN}</span>
-                                                </div>
-                                            </td>
-                                            <td className="text-center font-bold text-lg">{mark}</td>
-                                            <td className="text-center font-bold text-lg">{grade}</td>
-                                            <td className="text-center text-sm italic px-2">{note}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-
-                        {/* 分析表格 */}
-                        <div className="mb-4 break-inside-avoid">
-                            <h4 className="font-bold mb-1 text-sm uppercase underline">Analisis / 分析</h4>
-                            <table className="report-table">
+                        {/* 内容容器：Content Section - 自动伸缩 */}
+                        <div className="content-section">
+                            {/* 成绩表格 */}
+                            <table className="report-table mb-2">
                                 <thead>
                                     <tr>
-                                        {/* 强制不换行，并增加第一列宽度，确保“班级名次”不换行 */}
-                                        <th className="text-left pl-4 whitespace-nowrap w-[40%]">ASPEK</th>
-                                        {isTerm2 ? (
-                                            <>
-                                                <th className="w-[20%]">Penggal 1</th>
-                                                <th className="w-[20%]">Penggal 2</th>
-                                                <th className="w-[20%]">Keseluruhan</th>
-                                            </>
-                                        ) : (
-                                            <th className="w-[60%]">KEPUTUSAN / 结果</th>
-                                        )}
+                                        <th className="w-[32%] text-left pl-2">MATA PELAJARAN / 科目</th>
+                                        <th className="w-[10%]">MARKAH</th>
+                                        <th className="w-[10%]">GRED</th>
+                                        <th className="w-[48%]">CATATAN</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td className="font-bold pl-4 whitespace-nowrap">JUMLAH MARKAH / 总分</td>
-                                        {isTerm2 ? (
-                                            <>
-                                                <td className="text-center">{t1Score}</td>
-                                                <td className="text-center font-bold">{t2Score}</td>
-                                                <td className="text-center font-bold">{overallTotal}</td>
-                                            </>
-                                        ) : (
-                                            <td className="text-center font-bold">{data.TotalScore}</td>
-                                        )}
-                                    </tr>
-                                    <tr>
-                                        <td className="font-bold pl-4 whitespace-nowrap">PURATA / 平均分</td>
-                                        {isTerm2 ? (
-                                            <>
-                                                <td className="text-center">{t1Avg}</td>
-                                                <td className="text-center font-bold">{t2Avg}</td>
-                                                <td className="text-center font-bold">{overallAvg}</td>
-                                            </>
-                                        ) : (
-                                            <td className="text-center font-bold">{data.Average}</td>
-                                        )}
-                                    </tr>
-                                    <tr>
-                                        {/* 关键修复：强制不换行 */}
-                                        <td className="font-bold pl-4 whitespace-nowrap">KEDUDUKAN DALAM KELAS / 班级名次</td>
-                                        {isTerm2 ? (
-                                            <>
-                                                <td className="text-center">#{t1Rank}</td>
-                                                <td className="text-center font-bold">#{t2Rank}</td>
-                                                <td className="text-center font-bold text-lg">#{overallRank}</td>
-                                            </>
-                                        ) : (
-                                            <td className="text-center font-bold text-lg">#{data.ClassPosition}</td>
-                                        )}
-                                    </tr>
+                                    {SUBJECTS_MAP.map((sub, idx) => {
+                                        const mark = data[sub.key];
+                                        const grade = data[`${sub.key}_GRED`];
+                                        const note = data[`${sub.key}_NOTE`];
+                                        
+                                        if ((mark === undefined || mark === null || mark === "") && (!grade || grade === "-")) return null;
+
+                                        return (
+                                            <tr key={idx}>
+                                                <td className="pl-2">
+                                                    <div className="subject-cell">
+                                                        <span className="font-bold uppercase text-xs">{sub.nameBM}</span>
+                                                        <span className="text-sm font-kaiti ml-2">{sub.nameCN}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="text-center font-bold text-lg">{mark}</td>
+                                                <td className="text-center font-bold text-lg">{grade}</td>
+                                                <td className="text-center text-xs italic px-1">{note}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
+
+                            {/* 分析表格 */}
+                            <div className="mb-2">
+                                <h4 className="font-bold mb-1 text-xs uppercase underline">Analisis / 分析</h4>
+                                <table className="report-table">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left pl-2 whitespace-nowrap w-[45%]">ASPEK</th>
+                                            {isTerm2 ? (
+                                                <>
+                                                    <th className="w-[18%]">Penggal 1</th>
+                                                    <th className="w-[18%]">Penggal 2</th>
+                                                    <th className="w-[19%]">Keseluruhan</th>
+                                                </>
+                                            ) : (
+                                                <th className="w-[55%]">KEPUTUSAN / 结果</th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className="font-bold pl-2 whitespace-nowrap">JUMLAH MARKAH / 总分</td>
+                                            {isTerm2 ? (
+                                                <>
+                                                    <td className="text-center">{t1Score}</td>
+                                                    <td className="text-center font-bold">{t2Score}</td>
+                                                    <td className="text-center font-bold">{overallTotal}</td>
+                                                </>
+                                            ) : (
+                                                <td className="text-center font-bold">{data.TotalScore}</td>
+                                            )}
+                                        </tr>
+                                        <tr>
+                                            <td className="font-bold pl-2 whitespace-nowrap">PURATA / 平均分</td>
+                                            {isTerm2 ? (
+                                                <>
+                                                    <td className="text-center">{t1Avg}</td>
+                                                    <td className="text-center font-bold">{t2Avg}</td>
+                                                    <td className="text-center font-bold">{overallAvg}</td>
+                                                </>
+                                            ) : (
+                                                <td className="text-center font-bold">{data.Average}</td>
+                                            )}
+                                        </tr>
+                                        <tr>
+                                            <td className="font-bold pl-2 whitespace-nowrap">KEDUDUKAN DALAM KELAS / 班级名次</td>
+                                            {isTerm2 ? (
+                                                <>
+                                                    <td className="text-center">#{t1Rank}</td>
+                                                    <td className="text-center font-bold">#{t2Rank}</td>
+                                                    <td className="text-center font-bold text-lg">#{overallRank}</td>
+                                                </>
+                                            ) : (
+                                                <td className="text-center font-bold text-lg">#{data.ClassPosition}</td>
+                                            )}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* 评语 - 自动填充剩余空间 */}
+                            <div className="comment-box">
+                                <span className="font-bold block mb-1 text-xs underline">ULASAN GURU / 教师评语:</span>
+                                <p className="italic text-md pl-2 pt-1">"{data.TeacherComment || 'Teruskan usaha anda. / 继续努力。'}"</p>
+                            </div>
                         </div>
 
-                        {/* 评语 */}
-                        <div className="mb-8 border border-black p-3 rounded min-h-[80px] break-inside-avoid">
-                            <span className="font-bold block mb-1 text-sm underline">ULASAN GURU / 教师评语:</span>
-                            <p className="italic text-lg pl-2 pt-1">"{data.TeacherComment || 'Teruskan usaha anda. / 继续努力。'}"</p>
-                        </div>
-
-                        {/* 签名栏 */}
+                        {/* 底部容器：Footer Section - 强制底部 */}
                         <div className="footer-section flex justify-between items-start text-center text-sm">
-                            <div className="w-1/3 px-4 flex flex-col items-center">
+                            <div className="w-1/3 px-2 flex flex-col items-center">
                                 <div className="signature-line"></div>
                                 <p className="font-bold">GURU KELAS</p>
                                 <p className="font-kaiti">班主任</p>
-                                <p className="text-xs mt-1 uppercase font-bold whitespace-nowrap">{data.ClassTeacher || config.classTeacher || '                    '}</p>
+                                <p className="text-[10px] mt-1 uppercase font-bold whitespace-nowrap">{data.ClassTeacher || config.classTeacher || '                    '}</p>
                             </div>
-                            <div className="w-1/3 px-4 flex flex-col items-center">
+                            <div className="w-1/3 px-2 flex flex-col items-center">
                                 <div className="signature-line"></div>
                                 <p className="font-bold">GURU BESAR</p>
                                 <p className="font-kaiti">校长</p>
-                                <p className="text-xs mt-1 uppercase font-bold">{config.headmaster || '                    '}</p>
+                                <p className="text-[10px] mt-1 uppercase font-bold">{config.headmaster || '                    '}</p>
                             </div>
-                            <div className="w-1/3 px-4 flex flex-col items-center">
+                            <div className="w-1/3 px-2 flex flex-col items-center">
                                 <div className="signature-line"></div>
                                 <p className="font-bold">IBU BAPA / PENJAGA</p>
                                 <p className="font-kaiti">家长 / 监护人</p>
