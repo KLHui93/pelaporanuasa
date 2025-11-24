@@ -19,31 +19,29 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* 引入 Noto Sans SC 作为最后的后备 */
+        /* 引入 Noto Sans SC 作为后备 */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
 
         /* --- 核心字体设置 --- */
-        /* 英文优先 Times New Roman，中文优先 KaiTi 系列 */
         body {
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'SimKai', 'BiauKai', 'Noto Sans SC', serif;
+            font-size: 13px; /* 马来文至少 13px */
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'Noto Sans SC', serif;
             background-color: #525659;
             color: #000;
             margin: 0;
             padding: 0;
-            font-size: 11pt; /* 基础字体加大 */
         }
 
-        /* 强制楷体类 - 加大字号 */
         .font-kaiti {
-            font-family: 'KaiTi', 'STKaiti', '楷体', 'SimKai', 'BiauKai', serif !important;
-            font-size: 12pt; /* 约 16px */
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Times New Roman', serif !important;
+            font-size: 15px; /* 中文至少 15px */
         }
 
         /* --- 打印样式 (绝对控制) --- */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0; /* 零边距 */
+                margin: 0;
             }
             
             html, body {
@@ -52,7 +50,6 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: white;
-                /* 关键：移除 overflow: hidden 以免截断底部，但通过高度控制防止溢出 */
             }
 
             .no-print {
@@ -71,32 +68,29 @@
                 page-break-after: always;
                 break-after: page; 
                 page-break-inside: avoid;
-                /* 稍微缩减高度，留出底部缓冲，防止空白页 */
-                height: 290mm; 
                 width: 210mm;
+                height: 296mm; /* 稍微小于 A4 高度，防止溢出 */
                 position: relative;
+                overflow: hidden;
                 display: flex !important;
                 flex-direction: column;
                 padding: 0 !important;
                 margin: 0 !important;
             }
             
-            /* 最后一个元素不需要分页符 */
             .page-break:last-of-type {
                 page-break-after: avoid;
                 break-after: avoid;
                 margin-bottom: 0;
             }
 
-            /* 打印时移除预览框装饰 */
             .a4-preview {
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
                 width: 100% !important;
                 height: 100% !important;
-                /* 打印时的物理边距：上下左右 10mm */
-                padding: 10mm !important; 
+                padding: 10mm 12mm !important; /* 打印时的物理边距 */
                 box-sizing: border-box;
             }
         }
@@ -113,37 +107,37 @@
         /* A4 容器 - Flexbox 垂直布局 */
         .a4-preview {
             width: 210mm;
-            height: 296mm; /* 屏幕模拟高度 */
-            padding: 10mm; /* 屏幕模拟边距 */
+            height: 296mm; 
+            padding: 10mm 12mm; 
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.5); 
             position: relative;
             box-sizing: border-box;
             display: flex;
             flex-direction: column; 
-            justify-content: space-between; /* 头顶天，脚立地 */
+            justify-content: space-between; /* 关键：头部顶，脚底踩 */
             margin-bottom: 20px;
         }
         
-        /* 顶部区域 - 固定 */
+        /* 顶部区域 */
         .header-section {
             flex: 0 0 auto;
         }
 
-        /* 中间内容区域 - 弹性 */
+        /* 中间内容区域 */
         .content-section {
-            flex: 1 1 auto;
+            flex: 1 1 auto; /* 占据剩余空间 */
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+            justify-content: flex-start; /* 内容靠上 */
             overflow: hidden;
             padding-top: 5px;
         }
 
-        /* 底部签名区域 - 固定 */
+        /* 底部签名区域 */
         .footer-section {
             flex: 0 0 auto;
-            margin-top: auto;
+            margin-top: auto; /* 强制推到底部 */
             padding-top: 10px;
         }
 
@@ -151,30 +145,28 @@
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            /* 确保表格字体也是 Times + 楷体 */
-            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', 'SimKai', serif;
-            font-size: 11pt; /* 表格字体加大 */
+            font-size: 13px;
             margin-bottom: 8px; 
         }
         .report-table th, .report-table td {
             border: 1px solid black;
-            padding: 2px 4px; /* 紧凑内边距 */
+            padding: 3px 5px; 
             vertical-align: middle;
-            line-height: 1.1; 
+            line-height: 1.2; 
+            font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
         }
         .report-table th {
             text-align: center;
             background-color: #f3f4f6;
             font-weight: bold;
-            padding-top: 4px;
-            padding-bottom: 4px;
         }
         
-        /* 科目列 - 不换行 */
+        /* 科目列 */
         .subject-cell {
-            display: block; 
-            white-space: nowrap; 
-            overflow: visible;
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            overflow: hidden;
         }
         
         /* 签名栏线 */
@@ -199,7 +191,7 @@
             margin-right: 8px;
             min-width: fit-content;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 11pt;
+            font-size: 13px;
             text-transform: uppercase; 
         }
         .info-value {
@@ -209,23 +201,22 @@
             padding-bottom: 1px;
             font-weight: bold;
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 12pt; /* 填写的资料字体大一点 */
+            font-size: 14px;
         }
         
-        /* 评语框 - 自适应高度 */
+        /* 评语框 - 修正为自然高度 */
         .comment-box-container {
-            flex-grow: 1; /* 填充剩余空间 */
             display: flex;
             flex-direction: column;
-            min-height: 60px; 
+            margin-bottom: 10px;
         }
         .comment-box {
             border: 1px solid black;
-            padding: 5px;
+            padding: 8px;
             width: 100%;
-            flex-grow: 1; /* 填满容器 */
             font-family: 'Times New Roman', 'KaiTi', 'STKaiti', '楷体', serif;
-            font-size: 11pt; /* 评语字体 */
+            min-height: 60px; /* 保持一个基本的最小高度，美观 */
+            font-size: 14px;
         }
     </style>
 </head>
@@ -287,11 +278,17 @@
         const calculateGrade = (mark) => {
             const m = parseFloat(mark);
             if (isNaN(m)) return { grade: '-', comment: '-' };
+            // 82 - 100: A (Cemerlang)
             if (m >= 82) return { grade: 'A', comment: 'Cemerlang' };
+            // 66 - 81: B (Kepujian)
             if (m >= 66) return { grade: 'B', comment: 'Kepujian' };
+            // 50 - 65: C (Baik)
             if (m >= 50) return { grade: 'C', comment: 'Baik' };
+            // 35 - 49: D (Memuaskan)
             if (m >= 35) return { grade: 'D', comment: 'Memuaskan' };
+            // 20 - 34: E (Mencapai Tahap Minimum)
             if (m >= 20) return { grade: 'E', comment: 'Mencapai Tahap Minimum' };
+            // 0 - 19: F (Belum Mencapai Tahap Minimum)
             return { grade: 'F', comment: 'Belum Mencapai Tahap Minimum' };
         };
 
@@ -349,7 +346,6 @@
                 if (students.length === 0) return [];
 
                 let allData = students.map(s => ({...s}));
-                
                 const groups = {}; 
 
                 allData.forEach(student => {
@@ -540,10 +536,7 @@
                                         <Filter className="w-4 h-4 text-blue-200" />
                                         <span className="text-sm font-bold">筛选:</span>
                                     </div>
-                                    <select className="text-black text-sm p-1 rounded min-w-[100px]" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
-                                        <option value="All">所有班级</option>
-                                        {uniqueClasses.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    {/* 重新排列顺序：年份 -> 学期 -> 班级 */}
                                     <select className="text-black text-sm p-1 rounded min-w-[100px]" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
                                         <option value="All">所有年份</option>
                                         {uniqueYears.filter(y => y !== 'All').map(y => <option key={y} value={y}>{y}</option>)}
@@ -551,6 +544,10 @@
                                     <select className="text-black text-sm p-1 rounded min-w-[80px]" value={filterTerm} onChange={(e) => setFilterTerm(e.target.value)}>
                                         <option value="All">所有学期</option>
                                         {uniqueTerms.filter(t => t !== 'All').map(t => <option key={t} value={t}>学期 {t}</option>)}
+                                    </select>
+                                    <select className="text-black text-sm p-1 rounded min-w-[100px]" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
+                                        <option value="All">所有班级</option>
+                                        {uniqueClasses.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                             )}
